@@ -28,6 +28,7 @@ class Metric;
 */
 class Application {
  public:
+  Application();
   Application(int argc, char** argv);
 
   /*! \brief Destructor */
@@ -35,6 +36,8 @@ class Application {
 
   /*! \brief To call this function to run application*/
   inline void Run();
+
+  void check_if_set_device_cuda();
 
  private:
   /*! \brief Load parameters from command line and config file*/
@@ -58,6 +61,7 @@ class Application {
   /*! \brief Main Convert model logic */
   void ConvertModel();
 
+public:
   /*! \brief All configs */
   Config config_;
   /*! \brief Training data */
@@ -72,6 +76,7 @@ class Application {
   std::unique_ptr<Boosting> boosting_;
   /*! \brief Training objective function */
   std::unique_ptr<ObjectiveFunction> objective_fun_;
+  bool m_is_random_test_data{false};
 };
 
 

@@ -202,15 +202,13 @@ create_isolated_source_dir() {
 
     cp -R ./python-package ./lightgbm-python
 
-    cp LICENSE ./lightgbm-python/
     cp VERSION.txt ./lightgbm-python/lightgbm/VERSION.txt
+    cp LICENSE ./lightgbm-python/
 
     cp -R ./cmake ./lightgbm-python
     cp CMakeLists.txt ./lightgbm-python
     cp -R ./include ./lightgbm-python
     cp -R ./src ./lightgbm-python
-    cp -R ./swig ./lightgbm-python
-    cp -R ./windows ./lightgbm-python
 
     # include only specific files from external_libs, to keep the package
     # small and avoid redistributing code with licenses incompatible with
@@ -220,12 +218,6 @@ create_isolated_source_dir() {
     # fast_double_parser #
     ######################
     mkdir -p ./lightgbm-python/external_libs/fast_double_parser
-    cp \
-        external_libs/fast_double_parser/CMakeLists.txt \
-        ./lightgbm-python/external_libs/fast_double_parser/CMakeLists.txt
-    cp \
-        external_libs/fast_double_parser/LICENSE* \
-        ./lightgbm-python/external_libs/fast_double_parser/
 
     mkdir -p ./lightgbm-python/external_libs/fast_double_parser/include/
     cp \
@@ -236,12 +228,6 @@ create_isolated_source_dir() {
     # fmt #
     #######
     mkdir -p ./lightgbm-python/external_libs/fmt
-    cp \
-        external_libs/fast_double_parser/CMakeLists.txt \
-        ./lightgbm-python/external_libs/fmt/CMakeLists.txt
-    cp \
-        external_libs/fmt/LICENSE* \
-        ./lightgbm-python/external_libs/fmt/
 
     mkdir -p ./lightgbm-python/external_libs/fmt/include/fmt
     cp \
@@ -252,20 +238,17 @@ create_isolated_source_dir() {
     # Eigen #
     #########
     mkdir -p ./lightgbm-python/external_libs/eigen/Eigen
-    cp \
-        external_libs/eigen/CMakeLists.txt \
-        ./lightgbm-python/external_libs/eigen/CMakeLists.txt
 
     modules="Cholesky Core Dense Eigenvalues Geometry Householder Jacobi LU QR SVD"
     for eigen_module in ${modules}; do
         cp \
-            external_libs/eigen/Eigen/${eigen_module} \
+            /opt/3rd/Eigen/Eigen/${eigen_module} \
             ./lightgbm-python/external_libs/eigen/Eigen/${eigen_module}
         if [ ${eigen_module} != "Dense" ]; then
             mkdir -p ./lightgbm-python/external_libs/eigen/Eigen/src/${eigen_module}/
             cp \
                 -R \
-                external_libs/eigen/Eigen/src/${eigen_module}/* \
+                /opt/3rd/Eigen/Eigen/src/${eigen_module}/* \
                 ./lightgbm-python/external_libs/eigen/Eigen/src/${eigen_module}/
         fi
     done
@@ -273,13 +256,13 @@ create_isolated_source_dir() {
     mkdir -p ./lightgbm-python/external_libs/eigen/Eigen/misc
     cp \
         -R \
-        external_libs/eigen/Eigen/src/misc \
+        /opt/3rd/Eigen/Eigen/src/misc \
         ./lightgbm-python/external_libs/eigen/Eigen/src/misc/
 
     mkdir -p ./lightgbm-python/external_libs/eigen/Eigen/plugins
     cp \
         -R \
-        external_libs/eigen/Eigen/src/plugins \
+        /opt/3rd/Eigen/Eigen/src/plugins \
         ./lightgbm-python/external_libs/eigen/Eigen/src/plugins/
 
     ###################
@@ -288,7 +271,7 @@ create_isolated_source_dir() {
     mkdir -p ./lightgbm-python/external_libs/compute
     cp \
         -R \
-        external_libs/compute/include \
+        ~/github/cuda_test/third/compute/include \
         ./lightgbm-python/external_libs/compute/include/
 }
 
@@ -307,9 +290,7 @@ if test "${INSTALL}" = true; then
             ./CMakeLists.txt \
             ./external_libs \
             ./include \
-            ./src \
-            ./swig \
-            ./windows
+            ./src
         # use regular-old setuptools for these builds, to avoid
         # trying to recompile the shared library
         sed -i.bak -e '/start:build-system/,/end:build-system/d' pyproject.toml

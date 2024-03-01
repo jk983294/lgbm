@@ -28,6 +28,9 @@ project(lgbm LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+include_directories(include)
+include_directories(src)
+
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules")
 
 #-- Sanitizer
@@ -421,3 +424,5 @@ install(
 if(INSTALL_HEADERS)
     install(DIRECTORY ${LightGBM_HEADER_DIR}/LightGBM DESTINATION ${CMAKE_INSTALL_PREFIX}/include)
 endif()
+
+add_subdirectory(source)

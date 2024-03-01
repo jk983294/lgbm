@@ -28,6 +28,9 @@
 
 namespace LightGBM {
 
+Application::Application() {
+
+}
 Application::Application(int argc, char** argv) {
   LoadParameters(argc, argv);
   // set number of threads for openmp
@@ -36,6 +39,10 @@ Application::Application(int argc, char** argv) {
     Log::Fatal("No training/prediction data, application quit");
   }
 
+  check_if_set_device_cuda();
+}
+
+void Application::check_if_set_device_cuda() {
   if (config_.device_type == std::string("cuda")) {
       LGBM_config_::current_device = lgbm_device_cuda;
   }

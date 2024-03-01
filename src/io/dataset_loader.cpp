@@ -200,6 +200,40 @@ void CheckSampleSize(size_t sample_cnt, size_t num_data) {
   }
 }
 
+Dataset* DatasetLoader::LoadFromRandom(size_t ncol, size_t nrow) {
+  auto dataset = std::unique_ptr<Dataset>(new Dataset());
+  if (store_raw_) {
+    dataset->SetHasRaw(true);
+  }
+  data_size_t num_global_data = 0;
+  std::vector<data_size_t> used_data_indices;
+  dataset->parser_config_str_ = "";
+
+  dataset->label_idx_ = ncol;
+  dataset->num_data_ = static_cast<data_size_t>(nrow);
+  dataset->ResizeRaw(dataset->num_data_);
+  // sample data
+  auto sample_data = SampleTextDataFromMemory(text_data);
+
+  // construct feature bin mappers & clear sample data
+  ConstructBinMappersFromTextData(0, 1, sample_data, parser.get(), dataset.get());
+  std::vector<std::string>().swap(sample_data);
+  if (dataset->has_raw()) {
+    dataset->ResizeRaw(dataset->num_data_);
+  }
+  // initialize label
+  dataset->metadata_.Init(dataset->num_data_, weight_idx_, group_idx_);
+  // extract features
+  ExtractFeaturesFromMemory(&text_data, parser.get(), dataset.get());
+  text_data.clear();
+  // check meta data
+  dataset->metadata_.CheckOrPartition(num_global_data, used_data_indices);
+  // need to check training data
+  CheckDataset(dataset.get(), false);
+
+  return dataset.release();
+}
+
 Dataset* DatasetLoader::LoadFromFile(const char* filename, int rank, int num_machines) {
   // don't support query id in data file when using distributed training
   if (num_machines > 1 && !config_.pre_partition) {

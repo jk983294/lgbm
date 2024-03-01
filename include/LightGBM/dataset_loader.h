@@ -21,6 +21,7 @@ class DatasetLoader {
   LIGHTGBM_EXPORT ~DatasetLoader();
 
   LIGHTGBM_EXPORT Dataset* LoadFromFile(const char* filename, int rank, int num_machines);
+  LIGHTGBM_EXPORT Dataset* LoadFromRandom(size_t ncol, size_t nrow);
 
   LIGHTGBM_EXPORT Dataset* LoadFromFile(const char* filename) {
     return LoadFromFile(filename, 0, 1);
