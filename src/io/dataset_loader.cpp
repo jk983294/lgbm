@@ -8,6 +8,7 @@
 #include <LightGBM/utils/array_args.h>
 #include <LightGBM/utils/json11.h>
 #include <LightGBM/utils/log.h>
+#include <LightGBM/utils/common.h>
 #include <LightGBM/utils/openmp_wrapper.h>
 
 #include <chrono>
@@ -23,6 +24,16 @@ DatasetLoader::DatasetLoader(const Config& io_config, const PredictFunction& pre
   weight_idx_ = NO_SPECIFIC;
   group_idx_ = NO_SPECIFIC;
   SetHeader(filename);
+  store_raw_ = false;
+  if (io_config.linear_tree) {
+    store_raw_ = true;
+  }
+}
+
+DatasetLoader::DatasetLoader(const Config& io_config, int num_class):config_(io_config), random_(config_.data_random_seed), num_class_(num_class) {
+  label_idx_ = 0;
+  weight_idx_ = NO_SPECIFIC;
+  group_idx_ = NO_SPECIFIC;
   store_raw_ = false;
   if (io_config.linear_tree) {
     store_raw_ = true;
@@ -200,38 +211,81 @@ void CheckSampleSize(size_t sample_cnt, size_t num_data) {
   }
 }
 
-Dataset* DatasetLoader::LoadFromRandom(size_t ncol, size_t nrow) {
-  auto dataset = std::unique_ptr<Dataset>(new Dataset());
-  if (store_raw_) {
-    dataset->SetHasRaw(true);
+Dataset* DatasetLoader::LoadFromRandom(size_t nrow, size_t ncol, const Dataset* train_data) {
+  std::unique_ptr<Dataset> ret;
+
+  std::mt19937 generator(config_.data_random_seed);
+  std::normal_distribution<double> uid(0., 1.0);
+  std::vector<double> X(nrow * ncol);
+  std::vector<double> y(nrow);
+  for (size_t i = 0; i < nrow; i++) {
+    double val = 0;
+    for (size_t j = 0; j < ncol; j++) {
+      X[i * ncol + j] = uid(generator);
+      if (j < ncol * 0.9) val += X[i * ncol + j];
+    }
+    y[i] = val + uid(generator);
   }
-  data_size_t num_global_data = 0;
-  std::vector<data_size_t> used_data_indices;
-  dataset->parser_config_str_ = "";
 
-  dataset->label_idx_ = ncol;
-  dataset->num_data_ = static_cast<data_size_t>(nrow);
-  dataset->ResizeRaw(dataset->num_data_);
-  // sample data
-  auto sample_data = SampleTextDataFromMemory(text_data);
+  if (train_data == nullptr) {
+    // sample data first
+    size_t sample_nrow = nrow;
+    if (sample_nrow > 100000 * 6) {
+      sample_nrow = sample_nrow * 0.2;
+    }
+    std::vector<int> sample_indices = random_.Sample(nrow, sample_nrow);
+    int sample_cnt = static_cast<int>(sample_indices.size());
+    std::vector<std::vector<double>> sample_values(ncol);
+    std::vector<std::vector<int>> sample_idx(ncol);
 
-  // construct feature bin mappers & clear sample data
-  ConstructBinMappersFromTextData(0, 1, sample_data, parser.get(), dataset.get());
-  std::vector<std::string>().swap(sample_data);
-  if (dataset->has_raw()) {
-    dataset->ResizeRaw(dataset->num_data_);
+    for (size_t i = 0; i < sample_indices.size(); ++i) {
+      auto idx = sample_indices[i];
+      const double* row = X.data() + idx * ncol;
+
+      for (size_t k = 0; k < ncol; ++k) {
+        if (std::fabs(row[k]) > kZeroThreshold || std::isnan(row[k])) {
+          sample_values[k].emplace_back(row[k]);
+          sample_idx[k].emplace_back(static_cast<int>(i));
+        }
+      }
+    }
+
+    CheckSampleSize(sample_nrow, nrow);
+
+    this->num_class_ = 1;
+    ret.reset(ConstructFromSampleData(Common::Vector2Ptr<double>(&sample_values).data(),
+                                      Common::Vector2Ptr<int>(&sample_idx).data(),
+                                      ncol,
+                                      Common::VectorSize<double>(sample_values).data(),
+                                      sample_cnt,
+                                      nrow,
+                                      nrow));
+  } else {
+    ret = std::unique_ptr<Dataset>(new Dataset());
+    ret->num_data_ = static_cast<data_size_t>(nrow);
+    // initialize label
+    ret->metadata_.Init(ret->num_data_, weight_idx_, group_idx_);
+    ret->CreateValid(train_data);
+    if (ret->has_raw()) {
+      ret->ResizeRaw(ret->num_data_);
+    }
   }
-  // initialize label
-  dataset->metadata_.Init(dataset->num_data_, weight_idx_, group_idx_);
-  // extract features
-  ExtractFeaturesFromMemory(&text_data, parser.get(), dataset.get());
-  text_data.clear();
-  // check meta data
-  dataset->metadata_.CheckOrPartition(num_global_data, used_data_indices);
-  // need to check training data
-  CheckDataset(dataset.get(), false);
 
-  return dataset.release();
+  #pragma omp parallel for num_threads(OMP_NUM_THREADS()) schedule(static)
+  for (size_t i = 0; i < nrow; i++) {
+    const int tid = omp_get_thread_num();
+    const double* row = X.data() + i * ncol;
+    ret->PushOneRow(tid, i, row);
+    ret->metadata_.SetLabelAt(i, static_cast<label_t>(y[i]));
+  }
+  ret->FinishLoad();
+
+  if (train_data == nullptr) {
+    CheckDataset(ret.get(), false);
+  } else {
+    ret->metadata_.CheckOrPartition(nrow, {});
+  }
+  return ret.release();
 }
 
 Dataset* DatasetLoader::LoadFromFile(const char* filename, int rank, int num_machines) {

@@ -579,6 +579,12 @@ class Dataset {
     }
   }
 
+  inline void PushOneRow(int tid, data_size_t row_idx, const double* feature_values) {
+    for (int i = 0; i < num_total_features_; ++i) {
+      this->PushOneValue(tid, row_idx, i, feature_values[i]);
+    }
+  }
+
   inline void PushOneRow(int tid, data_size_t row_idx, const std::vector<double>& feature_values) {
     for (size_t i = 0; i < feature_values.size() && i < static_cast<size_t>(num_total_features_); ++i) {
       this->PushOneValue(tid, row_idx, i, feature_values[i]);

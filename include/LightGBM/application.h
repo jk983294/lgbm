@@ -77,6 +77,9 @@ public:
   /*! \brief Training objective function */
   std::unique_ptr<ObjectiveFunction> objective_fun_;
   bool m_is_random_test_data{false};
+  int m_random_nrow{100000};
+  int m_random_ncol{1000};
+  int m_random_valid_nrow{10000};
 };
 
 

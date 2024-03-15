@@ -4,7 +4,7 @@ option(USE_GPU "Enable GPU-accelerated training" OFF)
 option(USE_HDFS "Enable HDFS support (EXPERIMENTAL)" OFF)
 option(USE_TIMETAG "Set to ON to output time costs" OFF)
 option(USE_CUDA "Enable CUDA-accelerated training " OFF)
-option(USE_DEBUG "Set to ON for Debug mode" OFF)
+option(USE_DEBUG "Set to ON for Debug mode" ON)
 option(USE_SANITIZER "Use santizer flags" OFF)
 set(
   ENABLED_SANITIZERS
